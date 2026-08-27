@@ -44,7 +44,7 @@ BT_GATT_SERVICE_DEFINE(preauth_svc,
                             read_challenge, NULL, NULL),
 
     BT_GATT_CHARACTERISTIC(BT_UUID_RESPONSE,
-                            BT_GATT_CHRC_WRITE,
+                            BT_GATT_CHRC_WRITE | BT_GATT_CHRC_WRITE_WITHOUT_RESP,
                             BT_GATT_PERM_WRITE,
                             NULL, write_response, NULL),
 

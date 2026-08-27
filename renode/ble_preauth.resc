@@ -1,0 +1,6 @@
+i @scripts/single-node/nrf52840.resc
+
+sysbus LoadELF @/home/ahmedh/zephyrproject/build/zephyr/zephyr.elf
+
+emulation CreateServerSocketTerminal 3456 "ble_hci_uart" false
+connector Connect sysbus.uart1 ble_hci_uart

@@ -1,0 +1,13 @@
+/ {
+    chosen {
+        zephyr,bt-hci = &bt_hci_uart;
+    };
+};
+
+&uart1 {
+    status = "okay";
+    bt_hci_uart: bt_hci_uart {
+        compatible = "zephyr,bt-hci-uart";
+        status = "okay";
+    };
+};

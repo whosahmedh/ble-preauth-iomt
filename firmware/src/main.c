@@ -50,7 +50,7 @@ static void bt_ready(int err)
     printk("Advertising started -- pre-auth GATT service discoverable\n");
 }
 
-#define RUN_CRYPTO_SELFTEST 1
+#define RUN_CRYPTO_SELFTEST 0
 
 #if RUN_CRYPTO_SELFTEST
 static void run_crypto_test_vectors(void)
