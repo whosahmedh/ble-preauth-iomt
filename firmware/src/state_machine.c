@@ -4,6 +4,7 @@
 #include <zephyr/random/random.h>
 #include <string.h>
 #include "state_machine.h"
+#include "auth_protocol.h"
 
 #define NONCE_LEN 32
 #define SESSION_TOKEN_LEN 32
@@ -89,7 +90,7 @@ bool state_machine_on_response(struct bt_conn *conn, const uint8_t *signature, u
     /* Placeholder verification -- real ECDSA check arrives in Phase 4.
        Any non-empty response is treated as PASS for now, purely so the
        state machine itself can be tested end-to-end before crypto exists. */
-    bool verified = (len > 0);
+    bool verified = auth_protocol_verify_response(current_nonce, signature, len);
 
     if (!verified) {
         printk("[IoMT] Verification: FAIL -> State: DISCONNECTED\n");

@@ -14,3 +14,10 @@ target_sources(app PRIVATE
     src/auth_service.c
     src/state_machine.c
 )
+
+target_sources(app PRIVATE
+    src/main.c
+    src/auth_service.c
+    src/state_machine.c
+    src/auth_protocol.c
+)
