@@ -1,5 +1,6 @@
 build/
 venv/
-*.pem
-*.der
+*_private.pem
+*_private.der
+*.bin
 *.log
