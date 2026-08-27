@@ -2,34 +2,32 @@
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/gatt.h>
 #include <zephyr/bluetooth/uuid.h>
+#include <zephyr/bluetooth/att.h>
 #include "auth_uuids.h"
-
-#define CHALLENGE_LEN 32
-#define SESSION_TOKEN_LEN 32
-
-/* Placeholder values only -- real nonce/crypto logic arrives in Phase 3 and 4 */
-static uint8_t challenge_value[CHALLENGE_LEN];
-static uint8_t session_token_value[SESSION_TOKEN_LEN];
+#include "state_machine.h"
 
 static ssize_t read_challenge(struct bt_conn *conn, const struct bt_gatt_attr *attr,
                                void *buf, uint16_t len, uint16_t offset)
 {
     return bt_gatt_attr_read(conn, attr, buf, len, offset,
-                              challenge_value, sizeof(challenge_value));
+                              state_machine_get_nonce(), 32);
 }
 
 static ssize_t write_response(struct bt_conn *conn, const struct bt_gatt_attr *attr,
                                const void *buf, uint16_t len, uint16_t offset, uint8_t flags)
 {
-    printk("Response received: %u bytes (verification logic arrives in Phase 4)\n", len);
+    state_machine_on_response(conn, (const uint8_t *)buf, len);
     return len;
 }
 
 static ssize_t read_session_token(struct bt_conn *conn, const struct bt_gatt_attr *attr,
                                    void *buf, uint16_t len, uint16_t offset)
 {
+    if (!state_machine_is_authenticated(conn)) {
+        return BT_GATT_ERR(BT_ATT_ERR_AUTHORIZATION);
+    }
     return bt_gatt_attr_read(conn, attr, buf, len, offset,
-                              session_token_value, sizeof(session_token_value));
+                              state_machine_get_session_token(), 32);
 }
 
 static void auth_status_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value)
