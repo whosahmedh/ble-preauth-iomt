@@ -63,7 +63,19 @@ static void auth_pairing_confirm(struct bt_conn *conn)
     }
 }
 
+static enum bt_security_err auth_pairing_accept(struct bt_conn *conn,
+                                                  const struct bt_conn_pairing_feat *const feat)
+{
+    if (state_machine_is_authenticated(conn)) {
+        printk("[IoMT] Pairing request ACCEPTED -- connection is AUTHENTICATED\n");
+        return BT_SECURITY_ERR_SUCCESS;
+    }
+    printk("[IoMT] Pairing request REJECTED -- connection not AUTHENTICATED\n");
+    return BT_SECURITY_ERR_PAIR_NOT_ALLOWED;
+}
+
 static struct bt_conn_auth_cb conn_auth_callbacks = {
+    .pairing_accept = auth_pairing_accept,
     .pairing_confirm = auth_pairing_confirm,
     .cancel = auth_cancel,
 };
