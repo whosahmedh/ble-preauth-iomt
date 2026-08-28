@@ -15,6 +15,18 @@ static const struct bt_data ad[] = {
     BT_DATA(BT_DATA_NAME_COMPLETE, DEVICE_NAME, DEVICE_NAME_LEN),
 };
 
+static struct k_work adv_restart_work;
+
+static void adv_restart_handler(struct k_work *work)
+{
+    int err = bt_le_adv_start(BT_LE_ADV_CONN_FAST_1, ad, ARRAY_SIZE(ad), NULL, 0);
+    if (err) {
+        printk("Failed to restart advertising (err %d)\n", err);
+    } else {
+        printk("Advertising restarted -- pre-auth GATT service discoverable\n");
+    }
+}
+
 static void connected(struct bt_conn *conn, uint8_t err)
 {
     if (err) {
@@ -126,6 +138,7 @@ static void run_crypto_test_vectors(void)
 int main(void)
 {
     state_machine_init();
+    k_work_init(&adv_restart_work, adv_restart_handler);
     bt_conn_auth_cb_register(&conn_auth_callbacks);
     bt_conn_auth_info_cb_register(&conn_auth_info_callbacks);
     

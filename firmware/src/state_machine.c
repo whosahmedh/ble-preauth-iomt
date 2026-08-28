@@ -25,6 +25,16 @@ static uint8_t current_nonce[NONCE_LEN];
 static uint8_t current_session_token[SESSION_TOKEN_LEN];
 static struct bt_conn *authenticated_conn;
 static struct k_timer session_timer;
+static struct bt_conn *pending_disconnect_conn;
+static struct k_work disconnect_work;
+
+static void disconnect_work_handler(struct k_work *work)
+{
+    if (pending_disconnect_conn) {
+        bt_conn_disconnect(pending_disconnect_conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+        pending_disconnect_conn = NULL;
+    }
+}
 
 static void reset_state(void)
 {
@@ -39,17 +49,17 @@ static void reset_state(void)
 static void session_timer_expired(struct k_timer *timer)
 {
     printk("[IoMT] Session token expired -> State: DISCONNECTED\n");
-    struct bt_conn *conn = authenticated_conn;
     current_state = STATE_DISCONNECTED;
-    if (conn) {
-        bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+    if (authenticated_conn) {
+        pending_disconnect_conn = authenticated_conn;
+        k_work_submit(&disconnect_work);
     }
-    reset_state();
 }
 
 void state_machine_init(void)
 {
     k_timer_init(&session_timer, session_timer_expired, NULL);
+    k_work_init(&disconnect_work, disconnect_work_handler);
     reset_state();
 }
 
@@ -96,8 +106,8 @@ bool state_machine_on_response(struct bt_conn *conn, const uint8_t *signature, u
     if (!verified) {
         printk("[IoMT] Verification: FAIL -> State: DISCONNECTED\n");
         current_state = STATE_DISCONNECTED;
-        bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
-        reset_state();
+        pending_disconnect_conn = conn;
+        k_work_submit(&disconnect_work);
         return false;
     }
 
