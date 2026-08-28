@@ -4,6 +4,7 @@
 #include "auth_uuids.h"
 #include "state_machine.h"
 #include "auth_protocol.h"
+#include <zephyr/bluetooth/conn.h>
 
 #define DEVICE_NAME     CONFIG_BT_DEVICE_NAME
 #define DEVICE_NAME_LEN (sizeof(DEVICE_NAME) - 1)
@@ -32,6 +33,43 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 BT_CONN_CB_DEFINE(conn_callbacks) = {
     .connected = connected,
     .disconnected = disconnected,
+};
+
+static void auth_cancel(struct bt_conn *conn)
+{
+    printk("[IoMT] Pairing cancelled\n");
+}
+
+static void auth_pairing_confirm(struct bt_conn *conn)
+{
+    if (state_machine_is_authenticated(conn)) {
+        printk("[IoMT] Pairing confirmed -- connection is AUTHENTICATED\n");
+        bt_conn_auth_pairing_confirm(conn);
+    } else {
+        printk("[IoMT] Pairing REJECTED -- connection not AUTHENTICATED\n");
+        bt_conn_auth_cancel(conn);
+    }
+}
+
+static struct bt_conn_auth_cb conn_auth_callbacks = {
+    .pairing_confirm = auth_pairing_confirm,
+    .cancel = auth_cancel,
+};
+
+static void auth_pairing_complete(struct bt_conn *conn, bool bonded)
+{
+    printk("[IoMT] Pairing complete -- bonded: %s\n", bonded ? "yes" : "no");
+    state_machine_on_bonded(conn);
+}
+
+static void auth_pairing_failed(struct bt_conn *conn, enum bt_security_err reason)
+{
+    printk("[IoMT] Pairing failed (reason %d)\n", reason);
+}
+
+static struct bt_conn_auth_info_cb conn_auth_info_callbacks = {
+    .pairing_complete = auth_pairing_complete,
+    .pairing_failed = auth_pairing_failed,
 };
 
 static void bt_ready(int err)
@@ -88,6 +126,9 @@ static void run_crypto_test_vectors(void)
 int main(void)
 {
     state_machine_init();
+    bt_conn_auth_cb_register(&conn_auth_callbacks);
+    bt_conn_auth_info_cb_register(&conn_auth_info_callbacks);
+    
     auth_protocol_init();
     #if RUN_CRYPTO_SELFTEST
         run_crypto_test_vectors();

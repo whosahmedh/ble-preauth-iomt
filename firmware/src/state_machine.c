@@ -16,6 +16,7 @@ typedef enum {
     STATE_CHALLENGE_SENT,
     STATE_VERIFYING,
     STATE_AUTHENTICATED,
+    STATE_BONDED_SESSION,
     STATE_DISCONNECTED
 } auth_state_t;
 
@@ -115,5 +116,18 @@ const uint8_t *state_machine_get_session_token(void)
 
 bool state_machine_is_authenticated(struct bt_conn *conn)
 {
-    return (current_state == STATE_AUTHENTICATED && authenticated_conn == conn);
+    return (current_state == STATE_AUTHENTICATED || current_state == STATE_BONDED_SESSION)
+           && authenticated_conn == conn;
+}
+
+void state_machine_on_bonded(struct bt_conn *conn)
+{
+    if (current_state != STATE_AUTHENTICATED || authenticated_conn != conn) {
+        printk("[IoMT] Bond formed on unexpected connection -- ignoring\n");
+        return;
+    }
+    k_timer_stop(&session_timer);
+    current_state = STATE_BONDED_SESSION;
+    printk("[IoMT] Bond formed\n");
+    printk("[IoMT] State: BONDED_SESSION -- Secure session active\n");
 }

@@ -96,6 +96,13 @@ async def main():
     except Exception as e:
         print(f"[PROG] Could not read session token yet: {e}")
 
+    print("[PROG] Initiating pairing...")
+    try:
+        await connection.pair()
+        print("[PROG] Pairing complete!")
+    except Exception as e:
+        print(f"[PROG] Pairing failed or unsupported call: {e}")
+    
     await asyncio.sleep(2)
     await connection.disconnect()
     print("[PROG] Disconnected.")
