@@ -1,0 +1,75 @@
+(* protocol.pv
+   Formal model of the BLE pre-pairing authentication protocol.
+   Proves authentication, replay resistance, pairing hijacking
+   resistance, and session binding hold against ANY Dolev-Yao
+   attacker strategy -- not just the four attacks tested in Phase 6. *)
+
+(* The BLE link itself: a single public channel, fully attacker-controlled.
+   This is the standard, worst-case assumption -- the attacker can read,
+   inject, modify, and reorder everything sent over it. *)
+free ch: channel.
+
+(* ----- Signature primitives (ECDSA, modelled abstractly as a generic
+   unforgeable signature scheme -- standard ProVerif idiom) ----- *)
+type sskey.
+type spkey.
+fun spk(sskey): spkey.
+fun sign(bitstring, sskey): bitstring.
+reduc forall m: bitstring, ssk: sskey; getmess(sign(m, ssk)) = m.
+reduc forall m: bitstring, ssk: sskey; checksign(sign(m, ssk), spk(ssk)) = m.
+
+(* The programmer's identity, sent as part of the signed message
+   (matches PROGRAMMER_ID in the real firmware/programmer.py) *)
+free progID: bitstring.
+
+(* The programmer's real private key -- secret, provisioned once,
+   never sent on the wire. Models Phase 1's key generation. *)
+free skProg: sskey [private].
+
+(* Events, used only to state the security queries below *)
+event ProgSigned(bitstring).
+event DeviceAccepts(bitstring).
+event DevicePairs(bitstring).
+
+(* ===== Security properties ===== *)
+
+(* Authentication: the device only ever accepts a response for nonce n
+   if the real programmer actually signed that exact nonce. Since skProg
+   is private and the signature scheme is unforgeable, an attacker cannot
+   produce a signature that passes checksign without it. *)
+query n: bitstring; event(DeviceAccepts(n)) ==> event(ProgSigned(n)).
+
+(* Replay resistance: each acceptance corresponds to a DISTINCT signing
+   event (injective correspondence). A captured signature from one
+   session cannot trigger a second acceptance in a different session. *)
+query n: bitstring; inj-event(DeviceAccepts(n)) ==> inj-event(ProgSigned(n)).
+
+(* Session binding / pairing hijacking resistance: pairing is only ever
+   granted for a nonce the device has itself already accepted -- it
+   cannot be granted to a connection that never authenticated. *)
+query n: bitstring; event(DevicePairs(n)) ==> event(DeviceAccepts(n)).
+
+(* ===== The IoMT device ===== *)
+let Device(spkProg: spkey) =
+    new n: bitstring;                     (* hardware-random nonce, Phase 3 *)
+    out(ch, n);                           (* Challenge characteristic read *)
+    in(ch, response: bitstring);          (* Response characteristic write *)
+    let (=n, =progID) = checksign(response, spkProg) in
+        event DeviceAccepts(n);
+        event DevicePairs(n)              (* pairing gated on THIS session, Phase 6 fix *)
+    else 0.
+
+(* ===== The real programmer ===== *)
+let Programmer(sskProg: sskey) =
+    in(ch, n: bitstring);
+    event ProgSigned(n);
+    let response = sign((n, progID), sskProg) in
+    out(ch, response).
+
+(* ===== Main: publish the public key (it's baked into the compiled
+   firmware, not secret), then allow unlimited concurrent sessions of
+   both roles, alongside an active network attacker ===== *)
+process
+    let spkProg = spk(skProg) in
+    out(ch, spkProg);
+    ( (!Device(spkProg)) | (!Programmer(skProg)) )

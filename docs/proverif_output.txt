@@ -1,0 +1,79 @@
+Process 0 (that is, the initial process):
+{1}let spkProg: spkey = spk(skProg) in
+{2}out(ch, spkProg);
+(
+    {3}!
+    {4}new n: bitstring;
+    {5}out(ch, n);
+    {6}in(ch, response: bitstring);
+    {7}let (=n,=progID) = checksign(response,spkProg) in
+    {8}event DeviceAccepts(n);
+    {9}event DevicePairs(n)
+) | (
+    {10}!
+    {11}let sskProg: sskey = skProg in
+    {12}in(ch, n_1: bitstring);
+    {13}event ProgSigned(n_1);
+    {14}let response_1: bitstring = sign((n_1,progID),sskProg) in
+    {15}out(ch, response_1)
+)
+
+--  Process 1 (that is, process 0, with let moved downwards):
+{1}let spkProg: spkey = spk(skProg) in
+{2}out(ch, spkProg);
+(
+    {3}!
+    {4}new n: bitstring;
+    {5}out(ch, n);
+    {6}in(ch, response: bitstring);
+    {7}let (=n,=progID) = checksign(response,spkProg) in
+    {8}event DeviceAccepts(n);
+    {9}event DevicePairs(n)
+) | (
+    {10}!
+    {12}in(ch, n_1: bitstring);
+    {13}event ProgSigned(n_1);
+    {11}let sskProg: sskey = skProg in
+    {14}let response_1: bitstring = sign((n_1,progID),sskProg) in
+    {15}out(ch, response_1)
+)
+
+-- Query event(DeviceAccepts(n_2)) ==> event(ProgSigned(n_2)) in process 1.
+Translating the process into Horn clauses...
+Completing...
+Starting query event(DeviceAccepts(n_2)) ==> event(ProgSigned(n_2))
+goal reachable: b-event(ProgSigned(n_2)) -> event(DeviceAccepts(n_2))
+Abbreviations:
+n_2 = n[!1 = @sid]
+RESULT event(DeviceAccepts(n_2)) ==> event(ProgSigned(n_2)) is true.
+-- Query inj-event(DeviceAccepts(n_2)) ==> inj-event(ProgSigned(n_2)) in process 1.
+Translating the process into Horn clauses...
+Completing...
+Starting query inj-event(DeviceAccepts(n_2)) ==> inj-event(ProgSigned(n_2))
+goal reachable: b-inj-event(ProgSigned(n_2),@occ13_1) -> inj-event(DeviceAccepts(n_2),@occ8_1)
+The hypothesis occurs strictly before the conclusion.
+Abbreviations:
+n_2 = n[!1 = @sid]
+@occ8_1 = @occ8[response = sign((n_2,progID[]),skProg[]),!1 = @sid]
+@occ13_1 = @occ13[n_1 = n_2,!1 = @sid_1]
+RESULT inj-event(DeviceAccepts(n_2)) ==> inj-event(ProgSigned(n_2)) is true.
+-- Query event(DevicePairs(n_2)) ==> event(DeviceAccepts(n_2)) in process 1.
+Translating the process into Horn clauses...
+Completing...
+Starting query event(DevicePairs(n_2)) ==> event(DeviceAccepts(n_2))
+goal reachable: b-event(DeviceAccepts(n_2)) -> event(DevicePairs(n_2))
+Abbreviations:
+n_2 = n[!1 = @sid]
+RESULT event(DevicePairs(n_2)) ==> event(DeviceAccepts(n_2)) is true.
+
+--------------------------------------------------------------
+Verification summary:
+
+Query event(DeviceAccepts(n_2)) ==> event(ProgSigned(n_2)) is true.
+
+Query inj-event(DeviceAccepts(n_2)) ==> inj-event(ProgSigned(n_2)) is true.
+
+Query event(DevicePairs(n_2)) ==> event(DeviceAccepts(n_2)) is true.
+
+--------------------------------------------------------------
+
